@@ -1,0 +1,194 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int        @id @default(autoincrement())
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  name      String
+  email     String     @unique
+  password  String
+  active    Boolean    @default(true)
+  bio       String?
+  imageId   Int? @unique
+
+  //relations
+  posts         Post[]
+  image         UserImage?   @relation(fields: [imageId], references: [id])
+  comments      Comment[]
+  likes         Like[]
+  shares        Share[]
+  notifications Notication[]
+
+  //follow relations
+  following Follow[] @relation("user")
+  follower Follow[] @relation("following")
+
+  // chats relations
+  sender   Chat[] @relation("sender")
+  receiver Chat[] @relation("receiver")
+
+  //setting
+  setting UserSetting?
+}
+
+model UserSetting {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  scheduleUpload Boolean @default(false)
+  focusMode Boolean @default(false)
+  focusInterval Int @default(5)//in minutes
+  followNotication Boolean @default(true)
+  commentNotication Boolean @default(true)
+  shareNotication Boolean @default(true)
+  likeNotication Boolean @default(true)
+  chatNotication Boolean @default(true)
+
+  //relation to user
+  user   User @relation(fields: [userId], references: [id])
+  userId Int  @unique
+}
+
+model Post {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  status    String
+  userId    Int
+  imageId   Int?     @unique
+
+  //relations
+  user     User       @relation(fields: [userId], references: [id])
+  image    PostImage? @relation(fields: [imageId], references: [id])
+  comments Comment[]
+  likes    Like[]
+  shares   Share[]
+  tags     Tag_Post[]
+}
+
+model UserImage {
+  id         Int      @id @default(autoincrement())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  url        String
+  public_url String
+  userId     User?
+}
+
+model PostImage {
+  id         Int      @id @default(autoincrement())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  url        String
+  public_url String
+  postId     Post?
+
+}
+
+model Comment {
+  id          Int      @id @default(autoincrement())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  comment     String
+  postId      Int
+  commentedBy Int
+
+  //relations
+  user User @relation(fields: [commentedBy], references: [id])
+  post Post @relation(fields: [postId], references: [id])
+}
+
+model Like {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  postId    Int
+  likedBy   Int
+
+  //relations
+  user User @relation(fields: [likedBy], references: [id])
+  post Post @relation(fields: [postId], references: [id])
+}
+
+model Share {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  postId    Int
+  sharedBy  Int
+
+  //relations
+  user User @relation(fields: [sharedBy], references: [id])
+  post Post @relation(fields: [postId], references: [id])
+}
+
+model Notication {
+  id         Int      @id @default(autoincrement())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  userId     Int
+  notication String
+  userLink Int?
+  postLink Int?
+  chatLink Int?
+
+  //relations
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Tag {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tag       String   @unique
+
+  //relations
+  posts Tag_Post[]
+}
+
+model Tag_Post {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tagId     Int
+  postId    Int
+
+  //relations
+  tag  Tag  @relation(fields: [tagId], references: [id])
+  post Post @relation(fields: [postId], references: [id])
+}
+
+model Follow {
+  id          Int      @id @default(autoincrement())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      Int
+  followingId Int
+
+  //relations
+  user      User @relation("user", fields: [userId], references: [id])
+  following User @relation("following", fields: [followingId], references: [id])
+}
+
+model Chat {
+  id         Int      @id @default(autoincrement())
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  senderId   Int
+  receiverId Int
+  chat       String
+
+  //relations
+  sender   User @relation("sender", fields: [senderId], references: [id])
+  receiver User @relation("receiver", fields: [receiverId], references: [id])
+}
