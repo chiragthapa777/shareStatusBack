@@ -23,8 +23,9 @@ router.post("/:id", authorize, async(req,res)=>{
         if(!post){
             throw "cannot find the post"
         }
+        let result
         if(post.shares.find(like=>like.sharedBy===Number(userId))){
-            await prisma.share.deleteMany({
+            result =await prisma.share.deleteMany({
                 where:{
                     AND:{
                         postId:post.id,
@@ -35,16 +36,19 @@ router.post("/:id", authorize, async(req,res)=>{
             text="successfully unshared the post"
             await addNotication(req, prisma, post.userId,`Share: ${req.user.name} unshared your post `, "share", post.id)
         }else{
-            await prisma.share.create({
+            result =await prisma.share.create({
                 data:{
                     postId:post.id,
                     sharedBy:Number(userId)
+                },
+                include:{
+                    user:true
                 }
             })
             text="successfully shared the post"
             await addNotication(req, prisma, post.userId,`Share: ${req.user.name} shared your post `, "share", post.id)
         }
-        successRes(res,text)
+        successRes(res,result)
     } catch (error) {
         console.log(error)
         errorRes(res,error)

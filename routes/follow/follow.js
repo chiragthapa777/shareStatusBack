@@ -32,8 +32,9 @@ router.post("/", authorize, async (req, res) => {
         break;
       }
     }
+    let result
     if (unfollowFlag) {
-      await prisma.follow.deleteMany({
+      result=await prisma.follow.deleteMany({
         where: {
           AND: {
             userId: Number(req.user.id),
@@ -43,11 +44,14 @@ router.post("/", authorize, async (req, res) => {
       });
       await addNotication(req,prisma,id,`Follow: ${req.user.name} unfollowed you`, "follow")
     } else {
-      await prisma.follow.create({
+      result =await prisma.follow.create({
         data: {
           userId: Number(req.user.id),
           followingId: Number(id),
         },
+        include:{
+          user:true
+        }
       });
       await addNotication(req,prisma,id,`Follow: ${req.user.name} started following you`, "follow")
     }

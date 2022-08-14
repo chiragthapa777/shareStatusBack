@@ -5,68 +5,71 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 const authorize = require("../../middleware/authorize");
 
-
-const populateTag=async(tags, postId)=>{
- try {
-   if(tags){
-     const tagArr=tags.split(",");
-     const tagPost=[]
-     for (const tagName of tagArr) {
-       let tag=await prisma.tag.findUnique({
-         where:{
-           tag:tagName
-         }
-       })
-       if(!tag){
-         tag=await prisma.tag.create({
-           data:{
-             tag:tagName
-           }
-         })
-       }
-       tagPost.push(tag)
-     }
-     if(tagPost.length>0){
-       for (const tag of tagPost) {
-         await prisma.tag_Post.create({
-           data:{
-             tagId:tag.id,
-             postId
-           }
-         })
-       }
-     }
-   }
- } catch (error) {
-    return error
- }
-}
-const populateImage=async(id, postId)=>{
+const populateTag = async (tags, postId) => {
   try {
-    if(id){
-      const image=await prisma.postImage.findUnique(id)
-      if(!image){
-        throw "Invalid Image id"
-      }else{
-        await prisma.post.update({
-          where:{
-            id:postId
+    if (tags) {
+      const tagArr = tags.split(",");
+      const tagPost = [];
+      for (const tagName of tagArr) {
+        let tag = await prisma.tag.findUnique({
+          where: {
+            tag: tagName,
           },
-          data:{
-            imageId:id
-          }
-        })
+        });
+        if (!tag) {
+          tag = await prisma.tag.create({
+            data: {
+              tag: tagName,
+            },
+          });
+        }
+        tagPost.push(tag);
+      }
+      if (tagPost.length > 0) {
+        for (const tag of tagPost) {
+          await prisma.tag_Post.create({
+            data: {
+              tagId: tag.id,
+              postId,
+            },
+          });
+        }
       }
     }
   } catch (error) {
-    throw error
+    return error;
   }
-}
+};
+const populateImage = async (id, postId) => {
+  try {
+    if (id) {
+      const image = await prisma.postImage.findUnique({
+        where: {
+          id: Number(id),
+        },
+      });
+      if (!image) {
+        throw "Invalid Image id";
+      } else {
+        await prisma.post.update({
+          where: {
+            id: postId,
+          },
+          data: {
+            imageId: id,
+          },
+        });
+      }
+    }
+  } catch (error) {
+    throw error;
+  }
+};
 
 //add post
 router.post("/", authorize, async (req, res) => {
   try {
-    console.log("................................")
+    console.log("................................");
     console.log(req.body);
     let { status, imageId, tags } = req.body;
     let data = { status, userId: req.user.id };
@@ -87,9 +90,22 @@ router.post("/", authorize, async (req, res) => {
     let post = await prisma.post.create({
       data,
       include: {
-        comments: true,
-        shares: true,
-        likes: true,
+        tags: true,
+        comments: {
+          include: {
+            user: true,
+          },
+        },
+        shares: {
+          include: {
+            user: true,
+          },
+        },
+        likes: {
+          include: {
+            user: true,
+          },
+        },
         user: {
           select: {
             name: true,
@@ -98,31 +114,49 @@ router.post("/", authorize, async (req, res) => {
           },
         },
       },
-    });    
-    await populateTag(tags,post.id)
-    await populateImage(imageId, post.id)
-    post= await prisma.post.findUnique(({
-      where:{
-        id:post.id
+    });
+    await populateTag(tags, post.id);
+    await populateImage(imageId, post.id);
+    post = await prisma.post.findUnique({
+      where: {
+        id: post.id,
       },
-      include:{
-        image:true,
-        comments:true,
-        tags:{
-          select:{
-            tag:true
-          }
+      include: {
+        image: true,
+        tags: {
+          include: {
+            tag: true,
+          },
         },
-        shares:true,
-        _count:{
-          select:{
-            likes:true,
-            shares:true,
-            comments:true
-          }
-        }
-      }
-    }))
+        user: {
+          include: {
+            image: true,
+          },
+        },
+        comments: {
+          include: {
+            user: true,
+          },
+        },
+        likes: {
+          include: {
+            user: true,
+          },
+        },
+        shares: {
+          include: {
+            user: true,
+          },
+        },
+        _count: {
+          select: {
+            likes: true,
+            shares: true,
+            comments: true,
+          },
+        },
+      },
+    });
     successRes(res, post);
   } catch (error) {
     errorRes(res, error);
@@ -133,7 +167,8 @@ router.post("/", authorize, async (req, res) => {
 //get post for logged in user
 router.get("/", authorize, async (req, res) => {
   try {
-    let { orderBylike, desc, orderByComment, orderByShare,orderDate, tags, includeSharedPost, fromDate, toDate } = req.query;
+    let { orderBy, sortBy, from, to, tags, includeSharedPost, userId ,dateRange, search } =
+      req.query;
     // tags by ,
     let tagArr = [];
     if (tags) {
@@ -150,44 +185,149 @@ router.get("/", authorize, async (req, res) => {
     const followingArr = user.following.map((obj) => obj.followingId);
 
     //options
-    let includeObj = {};
     let orderByObj = {};
     let whereObj = {};
-
-    //include options
-    includeObj._count = {
-      select: {
-        comments: true,
-        likes: true,
-        shares: true,
-      },
-    };
-    includeObj.tags ={
-      select:{
-        tag:true
-      }
-    };
-    includeObj.image=true
-    //order by
-    orderByObj.createdAt='desc'
-    //where
-    whereObj.OR = [
-        {
-          userId: req.user.id,
-        },
-        {
-          userId: {
-            in: followingArr,
+    if (tagArr.length > 0) {
+      whereObj.tags = {
+        some: {
+          tag: {
+            tag: {
+              in: tagArr,
+            },
           },
         },
-    ];
+      };
+    }
+    let includeObj = {
+      _count: {
+        select: {
+          comments: true,
+          likes: true,
+          shares: true,
+        },
+      },
+      tags: {
+        include: {
+          tag: true,
+        },
+      },
+      user: {
+        include: {
+          image: true,
+        },
+      },
+      image: true,
+      comments: {
+        include: {
+          user: {
+            include: {
+              image: true,
+            },
+          },
+        },
+      },
+      likes: {
+        include: {
+          user: {
+            include: {
+              image: true,
+            },
+          },
+        },
+      },
+      shares: {
+        include: {
+          user: {
+            include: {
+              image: true,
+            },
+          },
+        },
+      },
+    };
 
+    //include options
+    //order by
+    orderByObj.createdAt = "desc";
+    if (orderBy && (orderBy === "desc" || orderBy === "asc")) {
+      orderByObj.createdAt = orderBy;
+    }
+    if (sortBy) {
+      switch (sortBy) {
+        case "date":
+          break;
+        case "like":
+          orderByObj = {
+            likes: {
+              _count: orderBy ? orderBy : "asc",
+            },
+          };
+          break;
+        case "share":
+          orderByObj = {
+            shares: {
+              _count: orderBy ? orderBy : "asc",
+            },
+          };
+          break;
+        case "comment":
+          orderByObj = {
+            comments: {
+              _count: orderBy ? orderBy : "asc",
+            },
+          };
+          break;
+        default:
+          break;
+      }
+    }
+    //where
+    whereObj.OR = [
+      {
+        userId: req.user.id,
+      },
+      {
+        userId: {
+          in: followingArr,
+        },
+      },
+    ];
+    if (dateRange === "true" && from && to) {
+      whereObj.createdAt = {
+        lte: new Date(to),
+        gte: new Date(from),
+      };
+    }
+    if (userId) {
+      //delete all where and then only user
+      whereObj = {
+        userId: Number(userId),
+      };
+    }
+    if (includeSharedPost === "true" && whereObj?.OR) {
+      whereObj.OR.shares = {
+        some: {
+          user: {
+            id: {
+              in: followingArr,
+            },
+          },
+        },
+      };
+    }
+    if(search ){
+      whereObj={
+        status:{
+          contains:search
+        }
+      }
+    }
     let posts = await prisma.post.findMany({
-      take:20,
       where: whereObj,
       include: includeObj,
       orderBy: orderByObj,
     });
+
     successRes(res, posts);
   } catch (error) {
     errorRes(res, error);
@@ -195,31 +335,31 @@ router.get("/", authorize, async (req, res) => {
   }
 });
 
-//get by id
+//get by post id
 router.get("/:id", authorize, async (req, res) => {
   try {
-    const {id}=req.params
-    const post=await prisma.post.findUnique({
-      where:{id:Number(id)},
-      include:{
-        user:{
-          include:{
-            image:true,
-            setting:true
-          }
+    const { id } = req.params;
+    const post = await prisma.post.findUnique({
+      where: { id: Number(id) },
+      include: {
+        user: {
+          include: {
+            image: true,
+            setting: true,
+          },
         },
-        comments:true,
-        shares:true,
-        likes:true,
-        _count:{
+        comments: true,
+        shares: true,
+        likes: true,
+        _count: {
           select: {
             comments: true,
             likes: true,
             shares: true,
-          }
-        }
-      }
-    })
+          },
+        },
+      },
+    });
     successRes(res, post);
   } catch (error) {
     errorRes(res, error);
@@ -228,47 +368,45 @@ router.get("/:id", authorize, async (req, res) => {
 });
 
 //edit by id
-router.put("/:id",authorize,async(req,res)=>{
+router.put("/:id", authorize, async (req, res) => {
   try {
-    const {id}=req.params
-    const {status, imageId}=req.body
-    let post=await prisma.post.findUnique({
-      where:{id:Number(id)}
-    })
-    if(post.userId!==req.user.id){
-      throw "You are not authorized to edit the post"
+    const { id } = req.params;
+    const { status, imageId } = req.body;
+    let post = await prisma.post.findUnique({
+      where: { id: Number(id) },
+    });
+    if (post.userId !== req.user.id) {
+      throw "You are not authorized to edit the post";
     }
-    const data={}
-    if(status && status!==post.status){
-      data.status=status
+    const data = {};
+    if (status && status !== post.status) {
+      data.status = status;
     }
-    if(imageId && imageId!==post.imageId){
-      let img=await prisma.postImage.findUnique({
-        where:{
-          id:imageId
-        }
-      })
-      if(!img) throw "cannot find image"
-      data.imageId=imageId
+    if (imageId && imageId !== post.imageId) {
+      let img = await prisma.postImage.findUnique({
+        where: {
+          id: imageId,
+        },
+      });
+      if (!img) throw "cannot find image";
+      data.imageId = imageId;
     }
-    if(data){
-      post =await prisma.post.update({
-        where:{
-          id:Number(id)
+    if (data) {
+      post = await prisma.post.update({
+        where: {
+          id: Number(id),
         },
         data,
-        include:{
-          image:true
-        }
-      })
+        include: {
+          image: true,
+        },
+      });
     }
-    successRes(res,post)
+    successRes(res, post);
   } catch (error) {
     errorRes(res, error);
     console.log("create user error:", error);
   }
-})
-
-
+});
 
 module.exports = router;

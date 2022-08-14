@@ -9,7 +9,8 @@ const authorize = require("../../middleware/authorize");
 router.get("/", authorize, async (req, res) => {
   try {
     let whereObj = {};
-    const { search } = req.query;
+    
+    const { search, take, followingId, followerId, ids } = req.query;
     if (search) {
       whereObj.OR = [
         {
@@ -20,14 +21,24 @@ router.get("/", authorize, async (req, res) => {
         { email: { contains: search } },
       ];
     }
-    let user = await prisma.user.findMany({
-      take: 10,
+    if(ids){
+      let idArr=ids.split(',')
+      let arr=idArr.map(a=>Number(a))
+      whereObj={
+        id:{
+          in:arr
+        }
+      }
+    }
+    
+    whereObj.NOT={
+      id:req.user.id
+    }
+    let option={
+      take,
       where: whereObj,
-      select: {
-        id:true,
-        name: true,
-        email: true,
-        bio: true,
+      include: {
+        setting:true,
         image: true,
         following: {
           include: {
@@ -41,10 +52,16 @@ router.get("/", authorize, async (req, res) => {
         }
       },
       orderBy: {
-        name: "asc",
+        name: "desc",
       },
-    });
-    successRes(res, user);
+    }
+    if(take) option.take=Number(take)
+    let user = await prisma.user.findMany(option);
+    const users=user.map(u=>{
+      delete u.password
+      return u
+    })
+    successRes(res, users);
   } catch (error) {
     errorRes(res, error);
     console.log("create user error:", error);
@@ -60,11 +77,7 @@ router.get("/:id", authorize, async (req, res) => {
       where: {
         id: Number(id),
       },
-      select: {
-        id:true,
-        name: true,
-        email: true,
-        bio: true,
+      include: {
         image: true,
         following: {
           include: {
@@ -75,6 +88,19 @@ router.get("/:id", authorize, async (req, res) => {
           include: {
             user: true,
           },
+        },
+        posts:{
+          include:{
+            image:true,
+            comments:true,
+            _count:{
+              select: {
+                comments: true,
+                likes: true,
+                shares: true,
+              }
+            }
+          }
         }
       },
     });

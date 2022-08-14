@@ -16,7 +16,7 @@ function authorize(req, res, next)
             req.user = user;
             next()
         }).catch(error=>{
-            res.status(400).json({success:false,data:"Invalid Token"})
+            res.status(400).json({success:false,data:"Cannot Find the user"})
             
         })
     }catch(error)

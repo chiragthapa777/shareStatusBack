@@ -11,6 +11,7 @@ const authorize=require("../../middleware/authorize")
 router.post("/register", async (req, res) => {
   try {
     const {name, password, email}=req.body
+    console.log(req.body)
     if(!name || !password || !email){
       throw "Invalid request credentials"
     }
@@ -34,12 +35,27 @@ router.post("/register", async (req, res) => {
         password:hashPassword,
         email
       },
+      include: {
+        image: true,
+        following:{
+          include:{
+            following:true
+          }
+        },
+        follower:{
+          include:{
+            user:true
+          }
+        },
+        setting:true
+      },
     });
-    await prisma.userSetting.create({
+    let sett=await prisma.userSetting.create({
       data:{
         userId:user.id
       }
     })
+    user.setting=sett
     const token = jwt.sign({ id: user.id }, process.env.SECRET_KEY);
     delete user.password;
     successRes(res,{ user, token })
@@ -58,7 +74,22 @@ router.post("/login", async (req, res) => {
     }
     const user = await prisma.user.findUnique({where:{
       email
-    }})
+    },
+    include: {
+      image: true,
+      following:{
+        include:{
+          following:true
+        }
+      },
+      follower:{
+        include:{
+          user:true
+        }
+      },
+      setting:true
+    },
+  })
     if(!user){
       throw "Invalid login credentials"
     }
@@ -98,6 +129,43 @@ router.get("/",authorize, async (req, res) => {
       },
     });
     delete user.password,
+    // setTimeout(()=>{
+    // },3000)
+    successRes(res,user)
+  } catch (error) {
+    errorRes(res, error);
+    console.log("create user error:", error);
+  }
+});
+
+//edit user
+router.put("/",authorize, async (req, res) => {
+  try {
+    let user = await prisma.user.update({
+      where: {
+        id:req.user.id,
+      },
+      data:{
+        ...req.body
+      },
+      include: {
+        image: true,
+        following:{
+          include:{
+            following:true
+          }
+        },
+        follower:{
+          include:{
+            user:true
+          }
+        },
+        setting:true
+      },
+    });
+    delete user.password,
+    // setTimeout(()=>{
+    // },3000)
     successRes(res,user)
   } catch (error) {
     errorRes(res, error);

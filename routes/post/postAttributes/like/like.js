@@ -33,8 +33,9 @@ router.post("/", authorize, async(req,res)=>{
         if(!post){
             throw "cannot find the post"
         }
+        let result=null
         if(post.likes.find(like=>like.likedBy===user.id)){
-            await prisma.like.deleteMany({
+            result=await prisma.like.deleteMany({
                 where:{
                     AND:{
                         postId:post.id,
@@ -45,16 +46,19 @@ router.post("/", authorize, async(req,res)=>{
             text="successfully unliked the post"
             await addNotication(req, prisma, post.userId,`Like: ${req.user.name} unliked your post `, "like", postId)
         }else{
-            await prisma.like.create({
+            result=await prisma.like.create({
                 data:{
                     likedBy:user.id,
                     postId:post.id
+                },
+                include:{
+                    user:true
                 }
             })
             text="successfully liked the post"
             await addNotication(req, prisma, post.userId,`Like: ${req.user.name} liked your post `, "like", postId)
         }
-        successRes(res,text)
+        successRes(res,result)
     } catch (error) {
         console.log(error)
         errorRes(res,error)

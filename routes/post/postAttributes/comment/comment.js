@@ -29,6 +29,13 @@ router.post("/:id", authorize, async(req,res)=>{
                 comment,
                 postId:Number(id),
                 commentedBy:userId
+            },
+            include:{
+                user:{
+                    include:{
+                        image:true
+                    }
+                }
             }
         })
         await addNotication(req, prisma, post.userId,`Comment: ${req.user.name} added a comment to your post `, "comment", id)
