@@ -50,7 +50,6 @@ router.post("/:id", authorize, async(req,res)=>{
         }
         successRes(res,result)
     } catch (error) {
-        console.log(error)
         errorRes(res,error)
     }
 })

@@ -69,8 +69,6 @@ const populateImage = async (id, postId) => {
 //add post
 router.post("/", authorize, async (req, res) => {
   try {
-    console.log("................................");
-    console.log(req.body);
     let { status, imageId, tags } = req.body;
     let data = { status, userId: req.user.id };
     if (status === "") {

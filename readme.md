@@ -9,6 +9,8 @@ CLOUD_NAME=****
 CLOUD_API_KEY=****
 CLOUD_API_SECRET=****
 
+SECRET_KEY=***
+
 # .env end
 
 # Prisma command
@@ -18,3 +20,6 @@ CLOUD_API_SECRET=****
    * npx prisma db seed
 3. Generate and Run migration
    * npx prisma migrate dev --name _____
+
+# Start development server
+   * npm run dev

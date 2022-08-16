@@ -143,6 +143,7 @@ model Notication {
   userLink Int?
   postLink Int?
   chatLink Int?
+  seen Boolean @default(false)
 
   //relations
   user User @relation(fields: [userId], references: [id])

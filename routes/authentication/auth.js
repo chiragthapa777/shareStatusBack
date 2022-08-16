@@ -11,7 +11,6 @@ const authorize=require("../../middleware/authorize")
 router.post("/register", async (req, res) => {
   try {
     const {name, password, email}=req.body
-    console.log(req.body)
     if(!name || !password || !email){
       throw "Invalid request credentials"
     }

@@ -72,7 +72,6 @@ router.get("/", authorize, async (req, res) => {
 router.get("/:id", authorize, async (req, res) => {
   try {
     let { id } = req.params;
-    console.log(id);
     let user = await prisma.user.findUnique({
       where: {
         id: Number(id),
@@ -104,7 +103,6 @@ router.get("/:id", authorize, async (req, res) => {
         }
       },
     });
-    console.log(user);
     if (!user) {
       throw "Cannot find user";
     }

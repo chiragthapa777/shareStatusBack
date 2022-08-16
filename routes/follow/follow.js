@@ -23,7 +23,6 @@ router.post("/", authorize, async (req, res) => {
         userId: req.user.id,
       }
     });
-    console.log(followingArr);
     //check is already follows and want to unfollow
     let unfollowFlag = false;
     for (const follow of followingArr) {

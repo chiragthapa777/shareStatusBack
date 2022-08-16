@@ -41,7 +41,6 @@ router.post("/:id", authorize, async(req,res)=>{
         await addNotication(req, prisma, post.userId,`Comment: ${req.user.name} added a comment to your post `, "comment", id)
         successRes(res,cmt)
     } catch (error) {
-        console.log(error)
         errorRes(res,error)
     }
 })

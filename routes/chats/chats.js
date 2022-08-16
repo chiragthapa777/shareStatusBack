@@ -68,6 +68,18 @@ router.get("/:id", authorize, async (req, res) => {
       orderBy: {
         createdAt: "asc",
       },
+      include:{
+        sender:{
+          include:{
+            image:true
+          }
+        },
+        receiver:{
+          include:{
+            image:true
+          }
+        }
+      }
     });
     successRes(res, chats);
   } catch (error) {
@@ -86,6 +98,18 @@ router.post("/", authorize, async (req, res) => {
         senderId,
         chat: message,
       },
+      include:{
+        sender:{
+          include:{
+            image:true
+          }
+        },
+        receiver:{
+          include:{
+            image:true
+          }
+        }
+      }
     });
     successRes(res, chat);
   } catch (error) {

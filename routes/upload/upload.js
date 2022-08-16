@@ -49,7 +49,6 @@ async function upload(req) {
 router.post("/userimage", authorize, async (req, res) => {
   try {
     let maal = await upload(req);
-    console.log("uploaded", maal, typeof maal);
     let userImaage= await prisma.userImage.create({
         data:{
             url:maal.secure_url,
