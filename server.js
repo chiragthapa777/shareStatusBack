@@ -5,12 +5,15 @@ const fileUpload = require("express-fileupload");
 const {router}=require("./routes/index")
 const http=require('http')
 const socketUtils=require("./socket/socket")
+app.locals.connectedUsers=JSON.stringify("")
+const {bulkBackupScheduler}=require("./utils/schedule")
+
 
 
 //socket server
 const server = http.createServer(app);
 const io = socketUtils.sio(server);
-socketUtils.connection(io);
+socketUtils.connection(io, app);
 
 const socketIOMiddleware = (req, res, next) => {
   req.io = io;
@@ -39,6 +42,7 @@ const port = process.env.PORT
 router(app)
 
 //server
-server.listen(port, () => {
+server.listen(port, async () => {
   console.log(`\n. . . . . . . . . . . . . . . . . . . . . . . .\n|_______Welcome to ShareStatus server_________| \n|         Its running on port ${port}            |\n. . . . . . . . . . . . . . . . . . . . . . . .\n`)
+  await bulkBackupScheduler()
 })

@@ -4,6 +4,7 @@ const { errorRes, successRes } = require("../../utils/response");
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 const authorize = require("../../middleware/authorize");
+const {postJob} = require("../../utils/schedule");
 
 const populateTag = async (tags, postId) => {
   try {
@@ -69,7 +70,7 @@ const populateImage = async (id, postId) => {
 //add post
 router.post("/", authorize, async (req, res) => {
   try {
-    let { status, imageId, tags } = req.body;
+    let { status, imageId, tags, schedule, date } = req.body;
     let data = { status, userId: req.user.id };
     if (status === "") {
       throw "status cannot be empty";
@@ -84,6 +85,9 @@ router.post("/", authorize, async (req, res) => {
         throw "invalid image post";
       }
       data.imageId = imageId;
+    }
+    if(schedule){
+      data.active=false
     }
     let post = await prisma.post.create({
       data,
@@ -155,6 +159,11 @@ router.post("/", authorize, async (req, res) => {
         },
       },
     });
+    if(schedule){
+      postJob(post.id, date)
+      // schedule
+      return successRes(res, `Scheduled successfully at ${date}`)
+    }
     successRes(res, post);
   } catch (error) {
     errorRes(res, error);
@@ -316,10 +325,12 @@ router.get("/", authorize, async (req, res) => {
     if(search ){
       whereObj={
         status:{
-          contains:search
+          contains:search,
+          mode: 'insensitive'
         }
       }
     }
+    whereObj.active=true
     let posts = await prisma.post.findMany({
       where: whereObj,
       include: includeObj,

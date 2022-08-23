@@ -16,9 +16,10 @@ router.get("/", authorize, async (req, res) => {
         {
           name: {
             contains: search,
+            mode: 'insensitive'
           },
         },
-        { email: { contains: search } },
+        { email: { contains: search, mode: 'insensitive' } },
       ];
     }
     if(ids){
@@ -68,6 +69,18 @@ router.get("/", authorize, async (req, res) => {
   }
 });
 
+//get list of online user
+router.get("/online",(req,res)=>{
+  try {
+    console.log("pugyoooooooooo")
+    successRes(res, JSON.parse(req.app.locals.connectedUsers)
+    ? JSON.parse(req.app.locals.connectedUsers)
+    : [])
+  } catch (error) {
+    errorRes(res, error);
+  }
+})
+
 //get user by id
 router.get("/:id", authorize, async (req, res) => {
   try {
@@ -112,5 +125,6 @@ router.get("/:id", authorize, async (req, res) => {
     console.log("create user error:", error);
   }
 });
+
 
 module.exports = router;

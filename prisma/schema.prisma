@@ -40,8 +40,6 @@ model User {
   //setting
   setting UserSetting?
 
-  // schdule
-  schedules ScheduleUploadList[]
 }
 
 model UserSetting {
@@ -69,6 +67,7 @@ model Post {
   status    String
   userId    Int
   imageId   Int?     @unique
+  active    Boolean @default(true)
 
   //relations
   user     User       @relation(fields: [userId], references: [id])
@@ -77,6 +76,8 @@ model Post {
   likes    Like[]
   shares   Share[]
   tags     Tag_Post[]
+  
+  schedules ScheduleUploadList[]
 }
 
 model UserImage {
@@ -107,7 +108,7 @@ model Comment {
 
   //relations
   user User @relation(fields: [commentedBy], references: [id])
-  post Post @relation(fields: [postId], references: [id])
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
 }
 
 model Like {
@@ -119,7 +120,7 @@ model Like {
 
   //relations
   user User @relation(fields: [likedBy], references: [id])
-  post Post @relation(fields: [postId], references: [id])
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
 }
 
 model Share {
@@ -131,7 +132,7 @@ model Share {
 
   //relations
   user User @relation(fields: [sharedBy], references: [id])
-  post Post @relation(fields: [postId], references: [id])
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
 }
 
 model Notication {
@@ -168,7 +169,7 @@ model Tag_Post {
 
   //relations
   tag  Tag  @relation(fields: [tagId], references: [id])
-  post Post @relation(fields: [postId], references: [id])
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
 }
 
 model Follow {
@@ -200,12 +201,9 @@ model ScheduleUploadList{
   id         Int      @id @default(autoincrement())
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-  scheduledDate  DateTime 
-  status String
-  tags String
-  imageId Int?
-  userId Int
+  date  DateTime 
+  postId Int @unique
 
   //relations
-  user User @relation( fields: [userId], references: [id])
+  post Post @relation( fields: [postId], references: [id], onDelete: Cascade)
 }

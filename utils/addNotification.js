@@ -1,3 +1,5 @@
+const { io } =require("socket.io-client");
+
 const addNotication = async (req ,prisma, userId, text, type, postId) => {
   try {
     const populate = async (userId, text, userLink, chatLink, postLink) => {
@@ -13,6 +15,15 @@ const addNotication = async (req ,prisma, userId, text, type, postId) => {
       console.log(
         `New notification: ${notication.notication}`
       );
+
+      //send notication to client
+      const socket=io(process.env.IO_CLIENT_URL)
+      const users=JSON.parse(req?.app?.locals?.connectedUsers)?JSON.parse(req.app.locals.connectedUsers):[]
+      const user=users.find(u=>u?.userId===notication.userId)
+      console.log(notication, user)
+      if(user){
+        socket.emit("add-notification",notication,user.socketId+"_room")
+      }
       return notication
     };
 
@@ -52,8 +63,11 @@ const addNotication = async (req ,prisma, userId, text, type, postId) => {
     }
     case "follow": {
         if (user.setting.followNotication) {
-            return await populate(userId,text,Number(req.user.id),null,null)
+            return await populate(userId,text,Number(req?.user.id),null,null)
         }
+      }
+    case "schedule": {
+            return await populate(userId,text,null,null,Number(postId))
       }
     }
   } catch (error) {
