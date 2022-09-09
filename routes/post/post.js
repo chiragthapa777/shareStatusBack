@@ -5,6 +5,7 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 const authorize = require("../../middleware/authorize");
 const {postJob} = require("../../utils/schedule");
+const moment=require("moment")
 
 const populateTag = async (tags, postId) => {
   try {
@@ -162,7 +163,7 @@ router.post("/", authorize, async (req, res) => {
     if(schedule){
       postJob(post.id, date)
       // schedule
-      return successRes(res, `Scheduled successfully at ${date}`)
+      return successRes(res, `Scheduled status will be online ${moment(date).fromNow()}`)
     }
     successRes(res, post);
   } catch (error) {

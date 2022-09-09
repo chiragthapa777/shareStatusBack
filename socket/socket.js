@@ -23,8 +23,8 @@ exports.sio = (server) => {
 exports.connection = (io, app) => {
   io.on("connection", async (socket) => {
     try {
+      console.log(app.locals.connectedUsers )
       socket.on("add-online-user", async (obj, callback) => {
-        console.log(obj);
         let user = {};
         if (obj?.userId) {
           user = {
@@ -34,22 +34,11 @@ exports.connection = (io, app) => {
           let users = JSON.parse(app.locals.connectedUsers)
             ? JSON.parse(app.locals.connectedUsers)
             : [];
-          console.log("connectedUsers:", users);
-          if (!users?.find((u) => u.userId === obj?.userId)) {
-            users.push(user);
-            app.locals.connectedUsers = JSON.stringify(users);
-            // const user=await prisma.user.findUnique({
-            //   where:{
-            //     id:(obj?.userId)
-            //   },
-            //   include:{
-            //     setting:true
-            //   }
-            // })
-            // if(user && user?.setting?.focusMode){
-            //   setInterval
-            // }
-          }
+            if (!users?.find((u) => u.userId === obj.userId)) {
+              users.push(user);
+              app.locals.connectedUsers = JSON.stringify(users);
+            }
+            console.log("connectedUsers:", users);
           callback(user);
         }
       });
@@ -65,13 +54,24 @@ exports.connection = (io, app) => {
         socket.join(room);
         console.log(`A user join room: ${room}`);
       });
+      socket.on("leave-room", function (room) {
+        let users = JSON.parse(app.locals.connectedUsers)
+          ? JSON.parse(app.locals.connectedUsers)
+          : [];
+        console.log("remove socket",room,room.slice(0, -5))
+        users = users.filter((u) => u.socketId !== room.slice(0, -5));
+        app.locals.connectedUsers = JSON.stringify(users);
+        console.log("connectedUsers:", users);
+        socket.leave(room);
+        console.log(`A user left room: ${room}`);
+      });
 
       socket.on("send-message", (message, room) => {
         socket.broadcast.to(room).emit("receive-message", message);
       });
 
       socket.on("add-notification", (notification, socketId) => {
-        console.log("add-notification :::::::", notification, socketId);
+        console.log("checking",notification, socketId)
         socket.to(socketId).emit("push-notification", notification);
       });
 
@@ -82,6 +82,7 @@ exports.connection = (io, app) => {
           : [];
         users = users.filter((u) => u.socketId !== socket.id);
         app.locals.connectedUsers = JSON.stringify(users);
+        console.log("connectedUsers:", users);
       });
     } catch (error) {
       console.log(error);
