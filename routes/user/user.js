@@ -36,7 +36,6 @@ router.get("/", authorize, async (req, res) => {
       id:req.user.id
     }
     let option={
-      take,
       where: whereObj,
       include: {
         setting:true,

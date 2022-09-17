@@ -23,7 +23,6 @@ exports.sio = (server) => {
 exports.connection = (io, app) => {
   io.on("connection", async (socket) => {
     try {
-      console.log(app.locals.connectedUsers )
       socket.on("add-online-user", async (obj, callback) => {
         let user = {};
         if (obj?.userId) {

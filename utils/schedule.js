@@ -6,6 +6,7 @@ const schedule = require("node-schedule");
 const cronPost=async (postId, date)=>{
     try {
         const updateActive=async (postId)=>{
+            console.log("aayoo")
             const post=await prisma.post.update({
                 where:{
                     id:postId
@@ -24,8 +25,8 @@ const cronPost=async (postId, date)=>{
                         postId
                     }
                 })
-                 await addNotication(null, prisma, post.user.id,`Post shedule: Your post has been uploaded `, "shedule", post.id)
             }
+            await addNotication(null, prisma, post.user.id,`Post shedule: Your post has been uploaded `, "shedule", post.id)
         }
         if(new Date(date)<=new Date()){
             return updateActive(postId)

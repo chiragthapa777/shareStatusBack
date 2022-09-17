@@ -7,6 +7,36 @@ const authorize = require("../../middleware/authorize");
 const {postJob} = require("../../utils/schedule");
 const moment=require("moment")
 
+const postInclude={
+  tags: {
+    include:{
+      tag:true
+    }
+  },
+  image:true,
+  comments: {
+    include: {
+      user: true,
+    },
+  },
+  shares: {
+    include: {
+      user: true,
+    },
+  },
+  likes: {
+    include: {
+      user: true,
+    },
+  },
+  user: {
+    select: {
+      name: true,
+      email: true,
+      image: true,
+    },
+  },
+}
 const populateTag = async (tags, postId) => {
   try {
     if (tags) {
@@ -92,31 +122,7 @@ router.post("/", authorize, async (req, res) => {
     }
     let post = await prisma.post.create({
       data,
-      include: {
-        tags: true,
-        comments: {
-          include: {
-            user: true,
-          },
-        },
-        shares: {
-          include: {
-            user: true,
-          },
-        },
-        likes: {
-          include: {
-            user: true,
-          },
-        },
-        user: {
-          select: {
-            name: true,
-            email: true,
-            image: true,
-          },
-        },
-      },
+      include: postInclude,
     });
     await populateTag(tags, post.id);
     await populateImage(imageId, post.id);
@@ -165,6 +171,7 @@ router.post("/", authorize, async (req, res) => {
       // schedule
       return successRes(res, `Scheduled status will be online ${moment(date).fromNow()}`)
     }
+    console.log(post)
     successRes(res, post);
   } catch (error) {
     errorRes(res, error);
@@ -300,7 +307,9 @@ router.get("/", authorize, async (req, res) => {
         },
       },
     ];
+    console.log(req.query)
     if (dateRange === "true" && from && to) {
+      console.log(from, to)
       whereObj.createdAt = {
         lte: new Date(to),
         gte: new Date(from),
@@ -351,25 +360,11 @@ router.get("/:id", authorize, async (req, res) => {
     const { id } = req.params;
     const post = await prisma.post.findUnique({
       where: { id: Number(id) },
-      include: {
-        user: {
-          include: {
-            image: true,
-            setting: true,
-          },
-        },
-        comments: true,
-        shares: true,
-        likes: true,
-        _count: {
-          select: {
-            comments: true,
-            likes: true,
-            shares: true,
-          },
-        },
-      },
+      include: postInclude,
     });
+    if(!post || !post.active){
+      throw "Cannot find the post"
+    }
     successRes(res, post);
   } catch (error) {
     errorRes(res, error);
@@ -381,10 +376,14 @@ router.get("/:id", authorize, async (req, res) => {
 router.put("/:id", authorize, async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, imageId } = req.body;
+    const { status, imageId, tags } = req.body;
     let post = await prisma.post.findUnique({
       where: { id: Number(id) },
+      include:postInclude
     });
+    if(!post || !post.active){
+      throw "Cannot find the post"
+    }
     if (post.userId !== req.user.id) {
       throw "You are not authorized to edit the post";
     }
@@ -392,7 +391,7 @@ router.put("/:id", authorize, async (req, res) => {
     if (status && status !== post.status) {
       data.status = status;
     }
-    if (imageId && imageId !== post.imageId) {
+    if (imageId && imageId !== post.imageId && imageId!=="remove") {
       let img = await prisma.postImage.findUnique({
         where: {
           id: imageId,
@@ -401,17 +400,65 @@ router.put("/:id", authorize, async (req, res) => {
       if (!img) throw "cannot find image";
       data.imageId = imageId;
     }
+    if(imageId==="remove"){
+      data.imageId=null
+    }
+    if(tags){
+      const givenArr=tags.split(',').sort()
+      const postTagArr=[]
+      post.tags.map(tag=>{
+        if(!postTagArr.find(p=>p===tag?.tag)){
+          postTagArr.push(tag.tag)
+        }
+      })
+      postTagArr.sort()
+      if(givenArr!==postTagArr){
+        await prisma.tag_Post.deleteMany({
+          where:{
+            postId:post.id
+          }
+        })
+        await populateTag(tags,post.id)
+      }
+    }
     if (data) {
       post = await prisma.post.update({
         where: {
           id: Number(id),
         },
         data,
-        include: {
-          image: true,
-        },
+        include: postInclude,
       });
     }
+    successRes(res, post);
+  } catch (error) {
+    errorRes(res, error);
+    console.log("create user error:", error);
+  }
+});
+
+router.delete("/:id", authorize, async (req, res) => {
+  try {
+    const { id } = req.params;
+    let post = await prisma.post.findUnique({
+      where: { id: Number(id) },
+      include:postInclude
+    });
+    if(!post){
+      throw "Cannot find the post"
+    }
+    if (post.userId !== req.user.id) {
+      throw "You are not authorized to edit the post";
+    }
+    post = await prisma.post.update({
+      where: {
+        id: Number(id),
+      },
+      data:{
+        active:false
+      },
+      include: postInclude,
+    });
     successRes(res, post);
   } catch (error) {
     errorRes(res, error);

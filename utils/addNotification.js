@@ -2,6 +2,7 @@ const { io } =require("socket.io-client");
 
 const addNotication = async (req ,prisma, userId, text, type, postId) => {
   try {
+    console.log("notiffffffffffffff")
     const populate = async (userId, text, userLink, chatLink, postLink) => {
       const notication=await prisma.notication.create({
         data: {
@@ -45,31 +46,34 @@ const addNotication = async (req ,prisma, userId, text, type, postId) => {
     }
 
     if(!user) throw "invalid user"
-    switch (type) {
-      case "like": {
-        if (user.setting.likeNotication) {
-            return await populate(userId,text,null,null,Number(postId))
+
+      console.log("check")
+      switch (type) {
+        case "like": {
+          if (user.setting.likeNotication && userId!==req.user.id) {
+              return await populate(userId,text,null,null,Number(postId))
+          }
+      }
+      case "comment": {
+          if (user.setting.commentNotication && userId!==req.user.id) {
+              return await populate(userId,text,null,null,Number(postId))
+          }
+      }
+      case "share": {
+          if (user.setting.shareNotication && userId!==req.user.id) {
+              return await populate(userId,text,null,null,Number(postId))
+          }
+      }
+      case "follow": {
+          if (user.setting.followNotication && userId!==req.user.id) {
+              return await populate(userId,text,Number(req?.user.id),null,null)
+          }
         }
-    }
-    case "comment": {
-        if (user.setting.commentNotication) {
-            return await populate(userId,text,null,null,Number(postId))
-        }
-    }
-    case "share": {
-        if (user.setting.shareNotication) {
-            return await populate(userId,text,null,null,Number(postId))
-        }
-    }
-    case "follow": {
-        if (user.setting.followNotication) {
-            return await populate(userId,text,Number(req?.user.id),null,null)
+      case "schedule": {
+              return await populate(userId,text,null,null,Number(postId))
         }
       }
-    case "schedule": {
-            return await populate(userId,text,null,null,Number(postId))
-      }
-    }
+    
   } catch (error) {
     console.log(error)
   }

@@ -9,42 +9,62 @@ const addNotication = require("../../utils/addNotification");
 //get user with their latest chat with the user
 router.get("/userlists", authorize, async (req, res) => {
   try {
+    const { search } = req.query;
     let users = [];
+    let whereObj = {
+      id: {
+        not: req.user.id,
+      },
+    };
+    if(search){
+      whereObj.name={
+        contains:search,
+        mode: 'insensitive'
+      }
+    }
     users = await prisma.user.findMany({
-      where: {
-        id: {
-          not: req.user.id,
-        },
-      },
+      where: whereObj,
       include: {
-        sender: {
-          take: 1,
-          where: {
-            receiverId: req.user.id,
-          },
-          orderBy: {
-            createdAt: "desc",
-          },
-        },
         image: true,
-      },
+      }
     });
-    let sortedUser =
-      users.sort(
+
+    let usersWithChat = [];
+    for (const u of users) {
+      u.sender = await prisma.chat.findMany({
+        take: 1,
+        where: {
+          OR: [
+            {
+              receiverId: req.user.id,
+              senderId: u.id,
+            },
+            {
+              senderId: req.user.id,
+              receiverId: u.id,
+            },
+          ],
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      });
+      usersWithChat.push(u);
+    }
+
+    let sortedUser = usersWithChat
+      .map((u) => {
+        if (u.sender.length <= 0) {
+          u.sender.push({ createdAt: new Date(-8640000000000000) });
+        }
+        return u;
+      })
+      .sort(
         (a, b) =>
-          (b.sender.length > 0
-            ? b.sender[0]?.createdAt
-              ? new Date(b.sender[0].createdAt)
-              : new Date(1382086394000)
-            : new Date(1382086394000))
-            -
-            (a.sender.length > 0
-                ? a.sender[0]?.createdAt
-                  ? new Date(a.sender[0].createdAt)
-                  : new Date(1382086394000)
-                : new Date(1382086394000))
-      ) 
-      successRes(res, sortedUser);
+          new Date(b.sender[0].createdAt).getTime() -
+          new Date(a.sender[0].createdAt).getTime()
+      );
+    successRes(res, sortedUser);
   } catch (error) {
     errorRes(res, error);
     console.log("get chat error:", error);
@@ -58,28 +78,28 @@ router.get("/:id", authorize, async (req, res) => {
     const senderId = req.user.id;
     let chats = await prisma.chat.findMany({
       where: {
-        senderId:{
-            in:[senderId,receiverId]
+        senderId: {
+          in: [senderId, receiverId],
         },
-        receiverId:{
-            in:[senderId,receiverId]
+        receiverId: {
+          in: [senderId, receiverId],
         },
       },
       orderBy: {
         createdAt: "asc",
       },
-      include:{
-        sender:{
-          include:{
-            image:true
-          }
+      include: {
+        sender: {
+          include: {
+            image: true,
+          },
         },
-        receiver:{
-          include:{
-            image:true
-          }
-        }
-      }
+        receiver: {
+          include: {
+            image: true,
+          },
+        },
+      },
     });
     successRes(res, chats);
   } catch (error) {
@@ -98,18 +118,18 @@ router.post("/", authorize, async (req, res) => {
         senderId,
         chat: message,
       },
-      include:{
-        sender:{
-          include:{
-            image:true
-          }
+      include: {
+        sender: {
+          include: {
+            image: true,
+          },
         },
-        receiver:{
-          include:{
-            image:true
-          }
-        }
-      }
+        receiver: {
+          include: {
+            image: true,
+          },
+        },
+      },
     });
     successRes(res, chat);
   } catch (error) {
