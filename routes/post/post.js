@@ -171,7 +171,6 @@ router.post("/", authorize, async (req, res) => {
       // schedule
       return successRes(res, `Scheduled status will be online ${moment(date).fromNow()}`)
     }
-    console.log(post)
     successRes(res, post);
   } catch (error) {
     errorRes(res, error);
@@ -296,6 +295,27 @@ router.get("/", authorize, async (req, res) => {
           break;
       }
     }
+
+    //shared post for user
+    const sharedPost=await prisma.share.findMany({
+      where:{
+        sharedBy:{
+          in:followingArr
+        }
+      },
+      include:{
+        user:{
+          include:{
+            image:true
+          }
+        },
+        post:true
+      }
+    })
+    let sharedPostIdArr=sharedPost.map(s=>s.postId)
+    if (includeSharedPost === "false") {
+      sharedPostIdArr=[]
+    }
     //where
     whereObj.OR = [
       {
@@ -306,10 +326,13 @@ router.get("/", authorize, async (req, res) => {
           in: followingArr,
         },
       },
+      {
+        id:{
+          in:sharedPostIdArr
+        }
+      }
     ];
-    console.log(req.query)
     if (dateRange === "true" && from && to) {
-      console.log(from, to)
       whereObj.createdAt = {
         lte: new Date(to),
         gte: new Date(from),
@@ -321,17 +344,7 @@ router.get("/", authorize, async (req, res) => {
         userId: Number(userId),
       };
     }
-    if (includeSharedPost === "true" && whereObj?.OR) {
-      whereObj.OR.shares = {
-        some: {
-          user: {
-            id: {
-              in: followingArr,
-            },
-          },
-        },
-      };
-    }
+  
     if(search ){
       whereObj={
         status:{
@@ -346,6 +359,19 @@ router.get("/", authorize, async (req, res) => {
       include: includeObj,
       orderBy: orderByObj,
     });
+
+    //mapping post for shared by
+    posts.map(p=>{
+      const sharedObj=sharedPost.find(s=>s.postId===p.id)
+      if(sharedObj && !followingArr.find(f=>f===sharedObj.post.userId)){
+        p.wasSharedBy=sharedObj
+      }
+      else{
+        p.wasSharedBy=null
+      }
+      return p
+    })
+    
 
     successRes(res, posts);
   } catch (error) {
