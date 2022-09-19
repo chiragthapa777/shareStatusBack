@@ -11,15 +11,29 @@ router.get("/userlists", authorize, async (req, res) => {
   try {
     const { search } = req.query;
     let users = [];
+    let following=await prisma.follow.findMany({
+      where:{
+        userId:req.user.id
+      }
+    })
+    let followingArr=[]
+    for(const f of following){
+      followingArr.push(f.followingId)
+    }
+    console.log(followingArr)
     let whereObj = {
       id: {
-        not: req.user.id,
+        // not: req.user.id,
+        in : followingArr
       },
     };
     if(search){
       whereObj.name={
         contains:search,
         mode: 'insensitive'
+      }
+      whereObj.id={
+        not: req.user.id
       }
     }
     users = await prisma.user.findMany({
@@ -28,6 +42,7 @@ router.get("/userlists", authorize, async (req, res) => {
         image: true,
       }
     });
+    console.log(users)
 
     let usersWithChat = [];
     for (const u of users) {
@@ -64,6 +79,8 @@ router.get("/userlists", authorize, async (req, res) => {
           new Date(b.sender[0].createdAt).getTime() -
           new Date(a.sender[0].createdAt).getTime()
       );
+
+      
     successRes(res, sortedUser);
   } catch (error) {
     errorRes(res, error);
