@@ -18,7 +18,7 @@ const addNotication = async (req ,prisma, userId, text, type, postId) => {
       );
 
       //send notication to client
-      const socket=io(process.env.IO_CLIENT_URL)
+      const socket=io(process.env.IO_CLIENT_URL+":"+process.env.PORT)
       // const users=JSON.parse(req?.app?.locals?.connectedUsers)?JSON.parse(req.app.locals.connectedUsers):[]
       // const user=users.find(u=>u?.userId===notication.userId)
       console.log(notication, user)
