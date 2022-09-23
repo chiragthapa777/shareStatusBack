@@ -70,9 +70,14 @@ exports.connection = (io, app) => {
       });
 
       socket.on("add-notification", (notification, socketId) => {
-        console.log("checking",notification, socketId)
         socket.to(socketId).emit("push-notification", notification);
       });
+
+      socket.on("add-schedule-post", (post, socketId) => {
+        socket.to(socketId).emit("push-schedule-post", post);
+      });
+
+      
 
       socket.on("disconnect", () => {
         console.log(`socket ${socket.id} disconnected`);

@@ -19,6 +19,7 @@ const cronPost=async (postId, date)=>{
                     user:true
                 }
             })
+            await addNotication(null, prisma, post.user.id,`Post shedule: Your post has been uploaded `, "schedule", post.id)
             if(post){
                 await prisma.scheduleUploadList.delete({
                     where:{
@@ -26,7 +27,6 @@ const cronPost=async (postId, date)=>{
                     }
                 })
             }
-            await addNotication(null, prisma, post.user.id,`Post shedule: Your post has been uploaded `, "shedule", post.id)
         }
         if(new Date(date)<=new Date()){
             return updateActive(postId)
